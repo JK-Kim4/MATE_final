@@ -62,6 +62,161 @@ finalproject
 
 ### 주요 기능  (해당 부분은 작성자 본인이 구현한 기능 위주로 작성되었습니다.)
   
++ 상품 등록 및 수정, 삭제
+  + 상품 등록 기능및 정보수정, 삭제 기능은 'admin'등급의 회원에게만 제공되는 기능이다.
+  + ERP -> 상품 관리 메뉴에서 '상품 등록'버튼 클릭 시 새로운 상품을 등록할 수 있는 form이 제공되며 양식에 맞춰 정보를 입력 후, form을 제출하면 새로운 상품이 product테이블에 등록된다.
+  + 상품 등록시 본문에 추가될 내용은 CKEditor를 사용하여 위지윅 방식으로 구현하였으며, 본문에 노출될 이미지는 별도의 저장소를 통해 저장되도록 하였다.
+  ```java
+  //상품 등록 Controller
+  @RequestMapping(value = "/ERP/productEnroll.do",
+					method = RequestMethod.POST)
+	public String productEnroll(Product product,
+								@RequestParam("upFile") MultipartFile[] upFiles,
+								@RequestParam(value = "content", defaultValue = "내용을 입력해 주세요.") String content,
+								@RequestParam("imgDir") String imgDir,
+								HttpServletRequest request,
+								RedirectAttributes redirectAttr) throws Exception {
+		try {
+			//Content내 img태그 -> 저장 폴더명 변경
+			if(!content.equals("내용을 입력해 주세요.")) {
+				String repCont = content.replaceAll("temp", imgDir);
+				product.setContent(repCont);
+			}else {
+				product.setContent(content);
+			}
+			
+			//썸네일로 사용할 이미지 저장
+			List<ProductMainImages> mainImgList = new ArrayList<>();
+			String saveDirectory = request.getServletContext().getRealPath("/resources/upload/mainimages");
+			
+				for(MultipartFile upFile : upFiles) {
+					
+					//파일을 선택하지 않고 전송한 경우
+					if(upFile.isEmpty()) {
+						//섬네일 이미지는 반드시 필요하기 때문에 제출하지 않은 경우 에러넘겨줘야됨.
+						throw new Exception("파일을 첨부해 주세요.");
+					}
+					//파일을 첨부하고 전송한 경우 
+					else {
+						//1.1  파일명(renamdFilename) 생성
+						String renamedFilename = Utils.getRenamedFileName(upFile.getOriginalFilename());
+						
+						//1.2 메모리(RAM)에 저장되어있는 파일 -> 서버 컴퓨터 디렉토리 저장 tranferTo
+						File dest = new File(saveDirectory, renamedFilename);
+						upFile.transferTo(dest);
+						
+						//1.3 ProductMainImages객체 생성
+						ProductMainImages mainImgs = new ProductMainImages();
+						mainImgs.setOriginalFilename(upFile.getOriginalFilename());
+						mainImgs.setRenamedFilename(renamedFilename);
+						mainImgList.add(mainImgs);
+						
+					}
+					
+				}
+			
+			//Product객체에 MainImages객체를 Setting
+			product.setPmiList(mainImgList);
+			
+			//ProductImage 임시 저장 폴더
+			String tempDir = request.getServletContext().getRealPath("/resources/upload/temp");
+			//ProductImage 저장 폴더
+			String realDir = request.getServletContext().getRealPath("/resources/upload/" + imgDir);
+			File folder1 = new File(tempDir);
+			File folder2 = new File(realDir);
+			
+			List<String> productImages = new ArrayList<>();
+			//Content에 Image파일이 있을 경우 (temp폴더내 파일이 저장되었을 경우)
+			if(folder1.listFiles().length > 0) {
+				//productImage객체 생성 후 DB에 저장
+				productImages = FileUtils.getFileName(folder1);
+				product.setProductImagesName(productImages);
+			}
+			
+			//DB에 Product insert
+			int result = erpService.productEnroll(product);
+			
+			//product입력 시, file입력 처리 -> DB에 image등록과 동시에 fileDir옮기기  
+			if(result > 0) {
+				//folder1의 파일 -> folder2로 복사
+				FileUtils.fileCopy(folder1, folder2);
+				//folder1의 파일 삭제
+				FileUtils.fileDelete(folder1.toString());
+				redirectAttr.addFlashAttribute("msg", "상품 추가 완료");
+			}else {
+				//folder1의 파일 삭제
+				FileUtils.fileDelete(folder1.toString());
+				redirectAttr.addFlashAttribute("msg", "상품 추가 실패");
+			}
+			
+			return "redirect:/ERP/searchInfo.do";
+			
+		}catch(Exception e) {
+			e.printStackTrace();
+			redirectAttr.addFlashAttribute("msg", "페이지 오류 발생, 확인 후 다시 시도해주세요!");
+			return "redirect:/ERP/searchInfo.do";
+		}
+	}
+  ```
++ CKeditor
+  + 위지윅 에디터인 CKeditor API를 적용하여 이미지를 적용할 필요가 있는 본문영역에는 에디터를 구현하도록 하였다.
+  + 우선 에디터를 통하여 저장된 이미지는 임시 저장소에 저장된 뒤, form 제출이 완료가 되면 서버에 마련된 별도의 저장소로 해당 이미지를 옮기는 방식으로 진행된다.
+  + form제출이 정상적으로 처리가 되지않거나, 취소버튼을 클릭하면 임시 저장소의 파일들이 삭제가되며 이미지또한 저장되지않도록 처리되어있다.
+  ```java
+  //CKeditor 파일 업로드
+	@RequestMapping(value = "/imageFileUpload.do", method = RequestMethod.POST)
+	@ResponseBody
+	public String fileUpload(HttpServletRequest request, HttpServletResponse response,
+							 MultipartHttpServletRequest multiFile) throws Exception {
+		request.setCharacterEncoding("utf-8");
+		JsonObject json = new JsonObject();
+		PrintWriter printWriter = null;
+		OutputStream out = null;
+		MultipartFile file = multiFile.getFile("upload");
+		
+		//파일이 넘어왔을 경우
+		if(file != null) {
+			if(file.getSize() > 0 ) {
+				//이미지 파일 검사
+				if(file.getContentType().toLowerCase().startsWith("image/")) {
+					try {
+						String fileName = Utils.getRenamedFileName(file.getOriginalFilename());
+						byte[] bytes = file.getBytes();
+						String uploadPath = request.getServletContext().getRealPath("/resources/upload/temp");
+						File uploadFile = new File(uploadPath);
+						if(!uploadFile.exists()) {
+							uploadFile.mkdirs();
+						}
+						out = new FileOutputStream(new File(uploadPath, fileName));
+						out.write(bytes);
+						
+						printWriter = response.getWriter();
+						response.setContentType("text/html");
+						String fileUrl = request.getContextPath() + "/resources/upload/temp/" + fileName;
+						
+						//json 데이터로 등록
+						json.addProperty("uploaded", 1);
+						json.addProperty("fileName", fileName);
+						json.addProperty("url", fileUrl);
+						
+						printWriter.println(json);
+						
+					} catch(IOException e) {
+						e.printStackTrace();
+					} finally {
+						if(out != null)
+							out.close();
+						if(printWriter != null)
+							printWriter.close();
+					}
+				}
+			}
+		}
+		//파일이 넘어오지 않았을 경우
+		return null;
+	}
+  ```
+  
 
 -----------------------
 ### 이 외 구현기능
