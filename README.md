@@ -216,7 +216,64 @@ finalproject
 		return null;
 	}
   ```
-  
++ 발주및 입고 요청 처리
+	+ 발주요청과 입고 요청의 처리는 비동기 요청 처리 (AJAX) 방식으로 처리된다.
+	+ 발주 요청 처리는 회원 등급이 '제조사'등급인 회원만 이용 가능한 기능이며, 입고 요청처리는 'admin'과 '지점'등급 회원이 이용 가능한 기능이다.
+	+ 해당 페이지 진입 시 해당 회원의 정보를 참조, 각각 발주 테이블의 데이터와 입고 테이블의 데이터를 조회하게된다.
+	+ 요청 승락과 거절은 해당 테이블의 confirm컬럼값을 변경하는 방식으로 처리가된다.
+	```javascript
+	function appRequest(no){
+	console.log(no);
+	var confirm_val = confirm("상품을 발주하시겠습니까?");
+
+	if(confirm_val){
+		$.ajax({
+			url : "${pageContext.request.contextPath}/ERP/appRequest.do",
+			data : {
+				requestNo : no
+			},
+			dataType : "json",
+			method : "POST",
+			success : function(data){
+				alert(data.result);
+				window.location.reload();
+			},
+			error : function(xhr, status, err){
+				alert("오류가 발생하였습니다.");
+				console.log(xhr);	
+				console.log(status);	
+				console.log(err);	
+			}
+		});
+	}
+}
+function refRequest(no){
+	console.log(no);
+	var confirm_val = confirm("발주 요청을 취소하시곘습니까?");
+
+	if(confirm_val){
+		$.ajax({
+			url : "${pageContext.request.contextPath}/ERP/refRequest.do",
+			data : {
+				requestNo : no
+			},
+			dataType : "json",
+			method : "POST",
+			success : function(data){
+				alert(data.result);
+				window.location.reload();
+			},
+			error : function(xhr, status, err){
+				alert("오류가 발생하였습니다.");
+				console.log(xhr);	
+				console.log(status);	
+				console.log(err);	
+			}
+		});
+	}
+}
+	
+	```
 
 -----------------------
 ### 이 외 구현기능
