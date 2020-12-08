@@ -221,9 +221,10 @@ finalproject
 	+ 발주 요청 처리는 회원 등급이 '제조사'등급인 회원만 이용 가능한 기능이며, 입고 요청처리는 'admin'과 '지점'등급 회원이 이용 가능한 기능이다.
 	+ 해당 페이지 진입 시 해당 회원의 정보를 참조, 각각 발주 테이블의 데이터와 입고 테이블의 데이터를 조회하게된다.
 	+ 요청 승락과 거절은 해당 테이블의 confirm컬럼값을 변경하는 방식으로 처리가된다.
-	```javascript
-	function appRequest(no){
-	console.log(no);
+```javascript
+//발주 처리 
+function appRequest(no){
+
 	var confirm_val = confirm("상품을 발주하시겠습니까?");
 
 	if(confirm_val){
@@ -273,7 +274,7 @@ function refRequest(no){
 	}
 }
 	
-	```
+```
 
 -----------------------
 ### 이 외 구현기능
