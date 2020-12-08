@@ -90,8 +90,8 @@ public class ProductController {
 			redirectAttribute.addFlashAttribute("msg", "이미 담겨있는 상품입니다.");
 		}
 		
-		String redUrl = "product/productDetail.do?productNo="+productNo;
-		return "redirect:/" + redUrl;
+		
+		return "redirect:/product/productDetail.do?productNo=" + productNo;
 	}
 	
 	@RequestMapping("/selectCart.do")

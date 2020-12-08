@@ -16,21 +16,13 @@ $(function(){
 		
 	}); 
 
-	
-
 });
-
-
-
 
 jQuery(document).ready(function(){
 	
 	//파일 선택 | 취소 파일라벨명을 변경한다.
 	$("[name=upFile]").on("change", function(){
 			var file = $(this).prop('files')[0];
-			//console.log("this = " + $(this).val()); //선택된 파일이 this로 넘어옴
-			//console.log(file);
-			//console.log($(this).prop('files')); // 0:File, length:1 배열로 파일의 정보 넘어옴
 			var $label = $(this).next(".custom-file-label");
 
 			if(file == undefined){
@@ -41,7 +33,6 @@ jQuery(document).ready(function(){
 				
 		});
 });
-
 </script>
 <style>
 div#form-container{

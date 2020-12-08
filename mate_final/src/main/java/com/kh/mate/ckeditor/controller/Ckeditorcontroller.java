@@ -48,8 +48,6 @@ public class Ckeditorcontroller {
 						if(!uploadFile.exists()) {
 							uploadFile.mkdirs();
 						}
-						//String renamedFilename = Utils.getRenamedFileName(fileName);
-						//uploadPath = uploadPath + "/" + fileName;
 						out = new FileOutputStream(new File(uploadPath, fileName));
 						out.write(bytes);
 						
